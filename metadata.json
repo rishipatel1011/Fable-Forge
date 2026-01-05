@@ -1,0 +1,7 @@
+{
+  "name": "Fable Forge",
+  "description": "An AI-powered mythic engine that generates illustrated stories, legends, and fables with integrated narration.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
