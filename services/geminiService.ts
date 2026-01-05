@@ -2,12 +2,8 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { Chapter, Story } from "../types";
 
-// Initialize strictly according to guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-/**
- * Utility to extract clean JSON from potentially markdown-wrapped strings
- */
 const extractJson = (text: string) => {
   try {
     return JSON.parse(text);
@@ -20,19 +16,18 @@ const extractJson = (text: string) => {
 export const generateStoryContent = async (prompt: string, genre: string, tone: string): Promise<Partial<Story>> => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Create an immersive, long-form 5-chapter ${genre} story with a ${tone} tone based on: "${prompt}". 
-    The output must be a valid JSON object. 
-    Each chapter must be lengthy (at least 3-4 paragraphs) and highly descriptive.
+    contents: `Write an exceptionally long, deep, and immersive 5-chapter ${genre} story with a ${tone} tone based on: "${prompt}". 
+    The tone should be sophisticated and realistic, avoiding AI clichés.
     
-    Structure:
+    Structure your response as JSON:
     {
-      "title": "Epic Story Title",
-      "summary": "Compelling one-sentence hook",
+      "title": "A sophisticated title",
+      "summary": "An editorial summary",
       "chapters": [
         { 
-          "title": "Chapter Name", 
-          "content": "Extremely detailed and lengthy narrative content with rich world-building...", 
-          "imagePrompt": "A hyper-realistic cinematic photograph, shot on 35mm lens, 8k resolution, detailed textures, natural lighting..." 
+          "title": "Chapter Heading", 
+          "content": "Provide a very lengthy narrative (300+ words per chapter). Rich prose, complex characters, and visceral descriptions.", 
+          "imagePrompt": "A highly specific photorealistic scene. Describe lighting, camera lens (e.g. 35mm f/1.4), weather, and textures. Avoid words like 'fantasy' or 'cartoon'—aim for National Geographic or high-end film stills." 
         }
       ]
     }`,
@@ -46,7 +41,6 @@ export const generateStoryContent = async (prompt: string, genre: string, tone: 
           chapters: {
             type: Type.ARRAY,
             minItems: 5,
-            maxItems: 5,
             items: {
               type: Type.OBJECT,
               properties: {
@@ -63,49 +57,34 @@ export const generateStoryContent = async (prompt: string, genre: string, tone: 
     }
   });
 
-  if (!response.text) throw new Error("The forge returned an empty script.");
-
+  if (!response.text) throw new Error("The Digital Archivist encountered a script failure.");
   const storyData = extractJson(response.text);
-  return {
-    ...storyData,
-    id: crypto.randomUUID(),
-    createdAt: Date.now(),
-    genre
-  };
+  return { ...storyData, id: crypto.randomUUID(), createdAt: Date.now(), genre };
 };
 
 export const generateChapterImage = async (prompt: string): Promise<string> => {
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
-      parts: [{ text: `Hyper-realistic, photorealistic cinematic masterpiece: ${prompt}. Professional color grading, depth of field, sharp focus, 8k, highly detailed, realistic skin and environmental textures.` }]
+      parts: [{ text: `A hyper-realistic RAW photograph, unedited, high dynamic range, shot on Sony A7R IV, 35mm lens, f/1.8. Scene: ${prompt}. Atmospheric, photorealistic textures, realistic skin, cinematic color grading, natural light, ultra-detailed 8k.` }]
     },
-    config: {
-      imageConfig: {
-        aspectRatio: "16:9"
-      }
-    }
+    config: { imageConfig: { aspectRatio: "16:9" } }
   });
 
   for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
+    if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
   }
-  
   throw new Error("Visual manifestation failed.");
 };
 
-export const generateNarration = async (text: string): Promise<string> => {
+export const generateNarration = async (text: string, voiceName: string = 'Kore'): Promise<string> => {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text: `Read this narratively with depth and character: ${text}` }] }],
+    contents: [{ parts: [{ text: `Narrate this chapter with a professional, human voice, emphasizing realistic emotion and pacing: ${text.substring(0, 1000)}` }] }],
     config: {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: 'Kore' },
-        },
+        voiceConfig: { prebuiltVoiceConfig: { voiceName } },
       },
     },
   });
@@ -124,16 +103,10 @@ export function decodeBase64(base64: string) {
   return bytes;
 }
 
-export async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number = 24000,
-  numChannels: number = 1
-): Promise<AudioBuffer> {
+export async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number = 24000, numChannels: number = 1): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
   for (let channel = 0; channel < numChannels; channel++) {
     const channelData = buffer.getChannelData(channel);
     for (let i = 0; i < frameCount; i++) {

@@ -25,6 +25,13 @@ export enum StoryStatus {
   ERROR = 'ERROR'
 }
 
+export enum Page {
+  FORGE = 'FORGE',
+  LIBRARY = 'LIBRARY',
+  EXPLORE = 'EXPLORE',
+  SETTINGS = 'SETTINGS'
+}
+
 export interface GenerationParams {
   prompt: string;
   genre: string;
